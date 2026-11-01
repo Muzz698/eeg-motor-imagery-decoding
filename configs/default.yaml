@@ -1,0 +1,35 @@
+seed: 42
+output_dir: results
+
+data:
+  subjects: "1-20"        # start small; use "1-109" for the full dataset
+  cache_dir: data/cache   # preprocessed subjects are saved here
+  mne_data_dir: null      # where raw EDF files go (null = MNE default, ~/mne_data)
+  l_freq: 7.0             # mu (8-12 Hz) and beta (13-30 Hz) bands
+  h_freq: 30.0
+  tmin: 0.5               # seconds after the cue; skips the visual response to the cue
+  tmax: 2.5
+  resample: 128           # Hz; EEGNet was designed for 128 Hz input
+
+csp_lda:
+  n_components: 6
+  reg: ledoit_wolf        # shrinkage makes covariance estimates stable
+
+c3c4_lda:
+  c3_index: 8             # position of C3 and C4 in PhysioNet's channel order
+  c4_index: 12
+
+eegnet:
+  epochs: 100
+  batch_size: 64
+  patience: 15
+  F1: 8
+  D: 2
+  F2: 16
+  kern_length: 64         # half a second at 128 Hz
+  dropout: 0.25           # 0.25 suggested by Lawhern et al. for cross-subject
+  learning_rate: 0.001
+
+evaluation:
+  within_folds: 5
+  cross_folds: 5

@@ -1,0 +1,36 @@
+# Fast smoke run (about 5 minutes on a laptop CPU): 5 subjects, short training.
+seed: 42
+output_dir: results/quick
+
+data:
+  subjects: "1-5"
+  cache_dir: data/cache
+  mne_data_dir: null
+  l_freq: 7.0
+  h_freq: 30.0
+  tmin: 0.5
+  tmax: 2.5
+  resample: 128
+
+csp_lda:
+  n_components: 6
+  reg: ledoit_wolf
+
+c3c4_lda:
+  c3_index: 8
+  c4_index: 12
+
+eegnet:
+  epochs: 30
+  batch_size: 32
+  patience: 8
+  F1: 8
+  D: 2
+  F2: 16
+  kern_length: 64
+  dropout: 0.25
+  learning_rate: 0.001
+
+evaluation:
+  within_folds: 5
+  cross_folds: 5
