@@ -21,9 +21,8 @@ c3c4_lda:
   c4_index: 12
 
 eegnet:
-  epochs: 30
+  epochs: 30              # enough to check the pipeline runs, too few to judge accuracy
   batch_size: 32
-  patience: 8
   F1: 8
   D: 2
   F2: 16

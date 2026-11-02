@@ -118,18 +118,17 @@ def _scale(X: np.ndarray, scale: float) -> np.ndarray:
 class EEGNetClassifier(BaseEstimator, ClassifierMixin):
     """scikit-learn style wrapper so EEGNet runs through the same evaluation code.
 
-    If `groups` (subject IDs) are passed to fit(), whole subjects are held out
-    for early stopping, so validation mimics the unseen-subject test.
+    Trains for a fixed number of epochs, with no early stopping. On real EEG the
+    validation loss on new people is lowest before the model has learned anything,
+    because its confidence grows faster than its accuracy. Early stopping on that
+    loss restored a near-untrained model and left EEGNet at chance.
     """
 
-    def __init__(self, epochs: int = 100, batch_size: int = 64, patience: int = 15,
-                 val_fraction: float = 0.15, F1: int = 8, D: int = 2, F2: int = 16,
-                 kern_length: int = 64, dropout: float = 0.5, learning_rate: float = 1e-3,
-                 seed: int = 42, verbose: int = 0):
+    def __init__(self, epochs: int = 100, batch_size: int = 64, F1: int = 8, D: int = 2,
+                 F2: int = 16, kern_length: int = 64, dropout: float = 0.5,
+                 learning_rate: float = 1e-3, seed: int = 42, verbose: int = 0):
         self.epochs = epochs
         self.batch_size = batch_size
-        self.patience = patience
-        self.val_fraction = val_fraction
         self.F1 = F1
         self.D = D
         self.F2 = F2
@@ -139,38 +138,20 @@ class EEGNetClassifier(BaseEstimator, ClassifierMixin):
         self.seed = seed
         self.verbose = verbose
 
-    def _split(self, X, y, groups):
-        rng = np.random.default_rng(self.seed)
-        if groups is not None and len(np.unique(groups)) >= 4:
-            subjects = np.unique(groups)
-            n_val = max(1, round(self.val_fraction * len(subjects)))
-            val_subjects = rng.choice(subjects, size=n_val, replace=False)
-            val = np.isin(groups, val_subjects)
-        else:
-            val = np.zeros(len(y), dtype=bool)
-            val[rng.permutation(len(y))[: max(1, int(self.val_fraction * len(y)))]] = True
-        return X[~val], y[~val], X[val], y[val]
-
-    def fit(self, X, y, groups=None):
+    def fit(self, X, y):
         keras = _keras()
         keras.utils.set_random_seed(self.seed)
         self.classes_ = np.unique(y)
-        X_tr, y_tr, X_val, y_val = self._split(X, y, groups)
-        self.scale_ = float(X_tr.std()) + 1e-6
-        X_tr = _scale(X_tr, self.scale_)[..., np.newaxis]
-        X_val = _scale(X_val, self.scale_)[..., np.newaxis]
+        self.scale_ = float(X.std()) + 1e-6
+        X_tr = _scale(X, self.scale_)[..., np.newaxis]
 
         self.model_ = build_eegnet(X_tr.shape[1], X_tr.shape[2], len(self.classes_), self.F1,
                                    self.D, self.F2, self.kern_length, self.dropout,
                                    self.learning_rate)
-        stop = keras.callbacks.EarlyStopping(monitor="val_loss", patience=self.patience,
-                                             restore_best_weights=True)
-        self.history_ = self.model_.fit(X_tr, y_tr, validation_data=(X_val, y_val),
-                                        epochs=self.epochs, batch_size=self.batch_size,
-                                        callbacks=[stop], verbose=self.verbose).history
-        best = int(np.argmin(self.history_["val_loss"]))
-        print(f"      EEGNet: {len(self.history_['loss'])} epochs, best at epoch {best + 1}, "
-              f"validation accuracy {self.history_['val_accuracy'][best]:.3f}", flush=True)
+        self.history_ = self.model_.fit(X_tr, y, epochs=self.epochs, batch_size=self.batch_size,
+                                        verbose=self.verbose).history
+        print(f"      EEGNet: {self.epochs} epochs, final training accuracy "
+              f"{self.history_['accuracy'][-1]:.3f}", flush=True)
         return self
 
     def predict_proba(self, X):

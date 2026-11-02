@@ -117,19 +117,33 @@ def test_eegnet_learns_power_differences_on_unseen_subjects():
     erased this signal and left EEGNet at chance on real data."""
     X, y, groups = make_power_only_eeg()
     res = cross_subject(X, y, groups, lambda: EEGNetClassifier(
-        epochs=30, batch_size=32, patience=10, kern_length=32, seed=0), n_splits=4)
+        epochs=30, batch_size=32, kern_length=32, seed=0), n_splits=4)
     assert res["mean_accuracy"] > 0.8
 
 
 @pytest.mark.slow
 def test_eegnet_trains_and_predicts():
-    X, y, groups = make_fake_eeg(n_subjects=5, n_trials=40)
-    clf = EEGNetClassifier(epochs=15, batch_size=16, patience=15, kern_length=32, seed=0)
-    clf.fit(X, y, groups=groups)
+    X, y, _ = make_fake_eeg(n_subjects=5, n_trials=40)
+    clf = EEGNetClassifier(epochs=15, batch_size=16, kern_length=32, seed=0)
+    clf.fit(X, y)
     proba = clf.predict_proba(X)
     assert proba.shape == (len(X), 2)
     assert np.allclose(proba.sum(axis=1), 1, atol=1e-5)
     assert (clf.predict(X) == y).mean() > 0.7
+
+
+@pytest.mark.slow
+def test_eegnet_keeps_training_when_new_data_does_not_improve():
+    """Regression test: early stopping on validation loss used to restore a near-untrained
+    model on real data, leaving EEGNet at chance. Labels here are pure noise, so only
+    fitting the training set can raise accuracy, and only if training keeps going."""
+    rng = np.random.default_rng(2)
+    X = rng.normal(0, 1, (120, 8, 128)).astype(np.float32)
+    y = rng.permutation(np.tile([0, 1], 60))
+    clf = EEGNetClassifier(epochs=70, batch_size=16, kern_length=32, dropout=0.25, seed=0)
+    clf.fit(X, y)
+    assert len(clf.history_["loss"]) == 70
+    assert (clf.predict(X) == y).mean() > 0.8
 
 
 def test_cli_run_end_to_end(tmp_path, monkeypatch):

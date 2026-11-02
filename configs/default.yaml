@@ -22,7 +22,6 @@ c3c4_lda:
 eegnet:
   epochs: 100
   batch_size: 64
-  patience: 15
   F1: 8
   D: 2
   F2: 16
