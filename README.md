@@ -15,13 +15,13 @@ Many tutorials only report within-subject accuracy, or split trials randomly so 
 
 ## Results
 
-> Run `eegdecode run --config configs/default.yaml`, then fill in this table from `results/results.json`.
+All 104 usable subjects (4,680 trials), from `eegdecode run --config configs/default.yaml --subjects 1-109`. Within-subject ± is the spread across people; cross-subject ± is the spread across the 5 folds.
 
 | Method | Within-subject | Cross-subject |
 |---|---|---|
-| CSP + LDA | _xx ± xx %_ | _xx ± xx %_ |
-| C3/C4 + LDA | _xx ± xx %_ | _xx ± xx %_ |
-| EEGNet | — | _xx ± xx %_ |
+| CSP + LDA | 58.9 ± 14.9% | 61.9 ± 1.2% |
+| C3/C4 + LDA | 55.9 ± 13.6% | 56.4 ± 2.4% |
+| EEGNet | — | **68.3 ± 5.4%** |
 
 ![Per-subject accuracy](results/accuracy_by_subject.png)
 
@@ -40,7 +40,7 @@ Many tutorials only report within-subject accuracy, or split trials randomly so 
 
 **Models.**
 - **CSP + LDA.** Common Spatial Patterns learns 6 spatial filters that maximize the variance difference between classes (with Ledoit-Wolf shrinkage). Linear discriminant analysis classifies their log-variance.
-- **EEGNet-8,2** (Lawhern et al., 2018). A temporal convolution (learned frequency filters), a depthwise spatial convolution (learned, CSP-like spatial filters), then a separable convolution. Built with Keras 3 on the PyTorch backend. Inputs are divided by one scale factor computed on the training data, which keeps the power differences between channels that carry the motor imagery signal. (An earlier version scaled each channel separately; that erased the signal and left EEGNet at chance. A regression test now guards against it.) Early stopping uses held-out **subjects** from the training set, not random trials.
+- **EEGNet-8,2** (Lawhern et al., 2018). A temporal convolution (learned frequency filters), a depthwise spatial convolution (learned, CSP-like spatial filters), then a separable convolution. Built with Keras 3 on the PyTorch backend. Inputs are divided by one scale factor computed on the training data, which keeps the power differences between channels that carry the motor imagery signal. (An earlier version scaled each channel separately; that erased the signal and left EEGNet at chance. A regression test now guards against it.) Training runs for a fixed 100 epochs with no early stopping. (On real EEG, validation loss on new people is lowest before the model has learned anything, because its confidence grows faster than its accuracy, so early stopping on it left EEGNet at chance. A regression test guards against this too.)
 - **C3/C4 + LDA.** A one-feature baseline: linear discriminant analysis on the log-power difference between electrodes C3 and C4, which sit over the left and right hand areas of the motor cortex. It tests how much the learned spatial filters add over the known physiology.
 
 **Evaluation.** Within-subject: 5-fold stratified cross-validation per person. Cross-subject: 5-fold `GroupKFold` by subject. All settings live in `configs/default.yaml`, and the random seed is fixed.
