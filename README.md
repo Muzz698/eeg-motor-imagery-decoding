@@ -27,7 +27,7 @@ All 104 usable subjects (4,680 trials), from `eegdecode run --config configs/def
 
 **Chance level.** With about 45 trials per person, guessing can reach well above 50% by luck. A single subject's accuracy must exceed about 62% to be significant at p < 0.05 (binomial test, Combrisson & Jerbi, 2015). The figure shows both lines.
 
-**What I found:** _Write 3–5 sentences here after running: which method won in each scheme, how much accuracy dropped from within- to cross-subject, how many people were above chance, and one thing that surprised you._
+**What I found:** EEGNet was the best decoder for unseen people, at 68.3% across 104 subjects, against 61.9% for CSP + LDA and 56.4% for a simple C3/C4 power comparison. 67 of 104 people were individually above chance with EEGNet. Accuracy did not drop from within- to cross-subject for CSP, probably because within-subject models had only 36 training trials per fold. What surprised me was how much EEGNet depended on data: with 20 subjects it was no better than the baselines. Getting there also meant fixing early stopping, which had been keeping a near-untrained model and left EEGNet at chance.
 
 ## Method
 
@@ -55,8 +55,8 @@ pip install -e ".[dev]"
 
 pytest                                             # tests use synthetic EEG, no download
 eegdecode run --config configs/quick.yaml          # 5 subjects, about 5 minutes
-eegdecode run --config configs/default.yaml        # 20 subjects, the main experiment
-eegdecode run --config configs/default.yaml --subjects 1-109   # full dataset
+eegdecode run --config configs/default.yaml        # 20 subjects, about 45 minutes
+eegdecode run --config configs/default.yaml --subjects 1-109   # all 104 usable subjects, the main experiment, about 4 hours
 ```
 
 The first run downloads the data automatically (about 2.5 MB per run file, 3 files per subject) into `~/mne_data`. Preprocessed subjects are cached in `data/cache/`, so later runs are fast.

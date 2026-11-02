@@ -8,8 +8,6 @@ Brain-computer interfaces usually need a calibration session for each new user. 
 
 This matters because calibration takes time and effort, which is a real cost for patients who might use these systems. A decoder that works on a new person from the start would remove that step.
 
-_[Add one sentence in your own words on what you expected before running this.]_
-
 ## 2. Data and preprocessing
 
 I used the PhysioNet EEG Motor Movement/Imagery dataset (Schalk et al., 2004; Goldberger et al., 2000): 64-channel EEG at 160 Hz, runs 4, 8 and 12, in which participants imagine opening and closing the left or right fist. Of the 109 subjects, 5 (88, 89, 92, 100 and 104) were excluded because of recording inconsistencies. That left 104 subjects and 4,680 trials (45 per person), with 2,360 left-hand and 2,320 right-hand trials.
