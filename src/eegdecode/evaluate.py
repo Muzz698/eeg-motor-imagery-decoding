@@ -11,7 +11,7 @@ import inspect
 from collections.abc import Callable
 
 import numpy as np
-from scipy.stats import binom
+from scipy.stats import binom, wilcoxon
 from sklearn.base import clone
 from sklearn.model_selection import GroupKFold, StratifiedKFold
 
@@ -81,3 +81,59 @@ def cross_subject(X, y, groups, make_model: Callable, n_splits: int = 5) -> dict
 def clone_factory(estimator) -> Callable:
     """Return a function that gives a fresh, unfitted copy of `estimator`."""
     return lambda: clone(estimator)
+
+
+# Pairs of methods compared across subjects. Each pair is tested only if both are in the results.
+DEFAULT_PAIRS = [
+    ("eegnet_cross", "csp_lda_cross"),
+    ("eegnet_cross", "c3c4_lda_cross"),
+    ("csp_lda_cross", "c3c4_lda_cross"),
+    ("eegnet_within", "csp_lda_within"),
+    ("csp_lda_within", "c3c4_lda_within"),
+    ("csp_lda_within", "csp_lda_cross"),
+    ("eegnet_within", "eegnet_cross"),
+]
+
+
+def compare_methods(results: dict, pairs=DEFAULT_PAIRS) -> list[dict]:
+    """Two-sided Wilcoxon signed-rank test between methods, paired by subject.
+
+    Each subject contributes one accuracy per method, so the test asks whether one
+    method is consistently better across people. p-values are Holm-corrected for the
+    number of pairs tested.
+    """
+    tests = []
+    for a, b in pairs:
+        if a not in results or b not in results:
+            continue
+        pa, pb = results[a]["per_subject"], results[b]["per_subject"]
+        subjects = sorted(set(map(int, pa)) & set(map(int, pb)))
+        xa = np.array([pa[s] if s in pa else pa[str(s)] for s in subjects])
+        xb = np.array([pb[s] if s in pb else pb[str(s)] for s in subjects])
+        diff = xa - xb
+        if len(subjects) < 2 or np.all(diff == 0):
+            stat, p = float("nan"), 1.0
+        else:
+            stat, p = wilcoxon(xa, xb, zero_method="wilcox")
+        tests.append({"a": a, "b": b, "n_subjects": len(subjects),
+                      "mean_a": float(xa.mean()), "mean_b": float(xb.mean()),
+                      "median_difference": float(np.median(diff)),
+                      "a_better_in": int((diff > 0).sum()), "b_better_in": int((diff < 0).sum()),
+                      "W": float(stat), "p": float(p)})
+    # Holm-Bonferroni correction
+    order = np.argsort([t["p"] for t in tests])
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, min(1.0, (len(tests) - rank) * tests[i]["p"]))
+        tests[i]["p_holm"] = running
+    return tests
+
+
+def format_tests(tests: list[dict]) -> str:
+    lines = [f"{'A':16s} {'B':16s} {'n':>4s} {'mean A':>7s} {'mean B':>7s} "
+             f"{'A>B':>4s} {'B>A':>4s} {'W':>8s} {'p':>9s} {'p(Holm)':>9s}"]
+    for t in tests:
+        lines.append(f"{t['a']:16s} {t['b']:16s} {t['n_subjects']:4d} {t['mean_a']:7.3f} "
+                     f"{t['mean_b']:7.3f} {t['a_better_in']:4d} {t['b_better_in']:4d} "
+                     f"{t['W']:8.1f} {t['p']:9.2g} {t['p_holm']:9.2g}")
+    return "\n".join(lines)

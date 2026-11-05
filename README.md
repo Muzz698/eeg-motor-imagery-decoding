@@ -21,11 +21,25 @@ All 104 usable subjects (4,680 trials), from `eegdecode run --config configs/def
 |---|---|---|
 | CSP + LDA | 58.9 ± 14.9% | 61.9 ± 1.2% |
 | C3/C4 + LDA | 55.9 ± 13.6% | 56.4 ± 2.4% |
-| EEGNet | — | **68.3 ± 5.4%** |
+| EEGNet | 52.0 ± 7.2% | **68.3 ± 5.4%** |
 
 ![Per-subject accuracy](results/accuracy_by_subject.png)
 
 **Chance level.** With about 45 trials per person, guessing can reach well above 50% by luck. A single subject's accuracy must exceed about 62% to be significant at p < 0.05 (binomial test, Combrisson & Jerbi, 2015). The figure shows both lines.
+
+**Paired tests.** Each pair of methods was compared with a Wilcoxon signed-rank test across the 104 subjects, with Holm correction for 7 comparisons (`eegdecode compare`).
+
+| Comparison | Mean A vs B | A better / B better (people) | p (Holm) |
+|---|---|---|---|
+| EEGNet vs CSP + LDA, cross | 68.3 vs 61.9% | 68 / 29 | 2.2 × 10⁻⁵ |
+| EEGNet vs C3/C4 + LDA, cross | 68.3 vs 56.4% | 80 / 18 | 1.7 × 10⁻¹¹ |
+| CSP + LDA vs C3/C4 + LDA, cross | 61.9 vs 56.4% | 67 / 29 | 4.4 × 10⁻⁵ |
+| EEGNet vs CSP + LDA, within | 52.0 vs 58.9% | 32 / 67 | 3.2 × 10⁻⁵ |
+| CSP + LDA vs C3/C4 + LDA, within | 58.9 vs 55.9% | 60 / 39 | 0.023 |
+| CSP + LDA, within vs cross | 58.9 vs 61.9% | 35 / 64 | 0.0089 |
+| EEGNet, within vs cross | 52.0 vs 68.3% | 10 / 90 | 8.6 × 10⁻¹⁶ |
+
+**EEGNet within-subject.** Trained on one person's 36 trials per fold (dropout 0.5), EEGNet is close to chance: 52.0%, with only 7 of 104 people above the 62% threshold. It fits its training trials (training accuracy about 0.8–0.95) but does not generalize to that person's other trials. CSP + LDA, with far fewer parameters, does better with so little data. So the deep network needs many people's data, not one person's.
 
 **What I found:** EEGNet was the best decoder for unseen people, at 68.3% across 104 subjects, against 61.9% for CSP + LDA and 56.4% for a simple C3/C4 power comparison. 67 of 104 people were individually above chance with EEGNet. Accuracy did not drop from within- to cross-subject for CSP, probably because within-subject models had only 36 training trials per fold. What surprised me was how much EEGNet depended on data: with 20 subjects it was no better than the baselines. Getting there also meant fixing early stopping, which had been keeping a near-untrained model and left EEGNet at chance.
 

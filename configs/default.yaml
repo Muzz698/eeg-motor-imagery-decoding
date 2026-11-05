@@ -29,6 +29,9 @@ eegnet:
   dropout: 0.25           # 0.25 suggested by Lawhern et al. for cross-subject
   learning_rate: 0.001
 
+eegnet_within:            # overrides for within-subject EEGNet (~36 training trials)
+  dropout: 0.5            # 0.5 suggested by Lawhern et al. for within-subject
+
 evaluation:
   within_folds: 5
   cross_folds: 5

@@ -7,7 +7,13 @@ import numpy as np
 import pytest
 
 from eegdecode.data import EXCLUDED_SUBJECTS, parse_subjects
-from eegdecode.evaluate import chance_level, clone_factory, cross_subject, within_subject
+from eegdecode.evaluate import (
+    chance_level,
+    clone_factory,
+    compare_methods,
+    cross_subject,
+    within_subject,
+)
 from eegdecode.models import EEGNetClassifier, _scale, make_c3c4_lda, make_csp_lda
 
 SFREQ = 128
@@ -164,7 +170,9 @@ def test_cli_run_end_to_end(tmp_path, monkeypatch):
     assert (tmp_path / "results.json").exists()
     assert (tmp_path / "accuracy_by_subject.png").exists()
     assert set(summary["results"]) == {"csp_lda_within", "csp_lda_cross", "c3c4_lda_within",
-                                       "c3c4_lda_cross", "eegnet_cross"}
+                                       "c3c4_lda_cross", "eegnet_within", "eegnet_cross"}
+    pairs = {(t["a"], t["b"]) for t in summary["tests"]}
+    assert ("eegnet_cross", "csp_lda_cross") in pairs and ("eegnet_within", "eegnet_cross") in pairs
 
 
 def test_load_subject_preprocessing_offline(monkeypatch):
@@ -198,3 +206,20 @@ def test_load_subject_preprocessing_offline(monkeypatch):
     assert X.shape == (3 * n_trials, 64, 257)  # 2 s at 128 Hz, inclusive
     assert set(np.unique(y)) == {0, 1}
     assert X.dtype == np.float32
+
+
+def test_compare_methods_finds_consistently_better_method():
+    rng = np.random.default_rng(0)
+    base = rng.uniform(0.5, 0.7, 30)
+    results = {"csp_lda_cross": {"per_subject": {s: float(a) for s, a in enumerate(base)}},
+               "eegnet_cross": {"per_subject": {str(s): float(a + 0.05 + rng.uniform(0, 0.02))
+                                                for s, a in enumerate(base)}},
+               "c3c4_lda_cross": {"per_subject": {s: float(a + rng.normal(0, 0.05))
+                                                  for s, a in enumerate(base)}}}
+    tests = {(t["a"], t["b"]): t for t in compare_methods(results)}
+    assert set(tests) == {("eegnet_cross", "csp_lda_cross"), ("eegnet_cross", "c3c4_lda_cross"),
+                          ("csp_lda_cross", "c3c4_lda_cross")}
+    better = tests[("eegnet_cross", "csp_lda_cross")]
+    assert better["a_better_in"] == 30 and better["p_holm"] < 0.001
+    assert tests[("csp_lda_cross", "c3c4_lda_cross")]["p_holm"] > 0.05
+    assert all(t["p_holm"] >= t["p"] for t in tests.values())

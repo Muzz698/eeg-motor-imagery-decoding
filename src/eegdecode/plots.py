@@ -14,11 +14,12 @@ LABELS = {
     "csp_lda_cross": "CSP+LDA\ncross-subject",
     "c3c4_lda_within": "C3/C4+LDA\nwithin-subject",
     "c3c4_lda_cross": "C3/C4+LDA\ncross-subject",
+    "eegnet_within": "EEGNet\nwithin-subject",
     "eegnet_cross": "EEGNet\ncross-subject",
 }
 COLORS = {"csp_lda_within": "#4C72B0", "csp_lda_cross": "#55A868",
           "c3c4_lda_within": "#8172B3", "c3c4_lda_cross": "#CCB974",
-          "eegnet_cross": "#C44E52"}
+          "eegnet_within": "#DD8452", "eegnet_cross": "#C44E52"}
 
 
 def plot_results(results: dict, path: str | Path) -> None:
